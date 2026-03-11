@@ -90,7 +90,7 @@ def _price_string(variants: list[dict]) -> tuple[str, str]:
         else:
             price_parts.append(f"{cur}{currency}")
             sale_parts.append(f"{cur}{currency}")
-    return ", ".join(price_parts), ", ".join(sale_parts)
+    return ",".join(price_parts), ",".join(sale_parts)
 
 
 def _category_from_product_type(product_type: str) -> str:
@@ -147,7 +147,7 @@ def build_product_row(
     if not image_url and product.get("image"):
         image_url = (product["image"].get("src") or "").strip()
 
-    additional_images = ", ".join(additional_urls) if additional_urls else None
+    additional_images = " , ".join(additional_urls) if additional_urls else None
     gender = _gender_from_tags(tags_list, collection_handle)
 
     size_options = []

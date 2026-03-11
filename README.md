@@ -39,9 +39,10 @@ python run.py --limit=5
 ## Automation
 
 - **Manual:** Run `python run.py` anytime.
-- **Daily at midnight (UTC):** Use the GitHub Action `.github/workflows/daily-scrape.yml`. Add repo secrets:
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
+- **Daily at midnight (UTC):** Use the GitHub Action `.github/workflows/daily-scrape.yml`.
+  1. In your repo go to **Settings → Secrets and variables → Actions**.
+  2. Add secrets: `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+  3. The workflow runs at `0 0 * * *` (midnight UTC); you can also trigger it from the **Actions** tab (**Run workflow**).
 
 ## Data
 
