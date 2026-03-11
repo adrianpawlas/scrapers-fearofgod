@@ -2,15 +2,27 @@
 from datetime import datetime
 from supabase import create_client, Client
 
-from config import SUPABASE_URL, SUPABASE_ANON_KEY
+from config import SUPABASE_URL, SUPABASE_ANON_KEY, EMBEDDING_DIM
 
 
 def get_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 
+def _valid_vector(vec):
+    """Return 768-dim list for pgvector if valid; else None."""
+    if vec is None or not isinstance(vec, (list, tuple)):
+        return None
+    if len(vec) != EMBEDDING_DIM:
+        return None
+    try:
+        return [float(x) for x in vec]
+    except (TypeError, ValueError):
+        return None
+
+
 def _row_to_payload(row: dict) -> dict:
-    return {
+    payload = {
         "id": row["id"],
         "source": row["source"],
         "product_url": row["product_url"],
@@ -24,7 +36,6 @@ def _row_to_payload(row: dict) -> dict:
         "metadata": row.get("metadata"),
         "size": row.get("size"),
         "second_hand": row.get("second_hand", False),
-        "image_embedding": row.get("image_embedding"),
         "country": row.get("country"),
         "compressed_image_url": row.get("compressed_image_url"),
         "tags": row.get("tags"),
@@ -32,9 +43,15 @@ def _row_to_payload(row: dict) -> dict:
         "price": row.get("price"),
         "sale": row.get("sale"),
         "additional_images": row.get("additional_images"),
-        "info_embedding": row.get("info_embedding"),
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
+    img_emb = _valid_vector(row.get("image_embedding"))
+    if img_emb is not None:
+        payload["image_embedding"] = img_emb
+    info_emb = _valid_vector(row.get("info_embedding"))
+    if info_emb is not None:
+        payload["info_embedding"] = info_emb
+    return payload
 
 
 def upsert_products(rows: list[dict]) -> tuple[int, list[str]]:

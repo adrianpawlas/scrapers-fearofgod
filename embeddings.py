@@ -1,11 +1,14 @@
 """SigLIP image and text embeddings (768-dim) for products."""
 import io
+import logging
 import requests
 import torch
 from PIL import Image
 from transformers import AutoProcessor, AutoModel, AutoTokenizer
 
 from config import SIGLIP_MODEL, EMBEDDING_DIM
+
+logger = logging.getLogger(__name__)
 
 
 def _device():
@@ -31,12 +34,16 @@ def image_embedding_from_url(image_url: str, processor, model, device) -> list[f
     """Download image and return 768-dim embedding from SigLIP vision encoder."""
     if not image_url or not image_url.startswith("http"):
         return None
-    try:
-        resp = requests.get(image_url, timeout=15)
-        resp.raise_for_status()
-        img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-    except Exception:
-        return None
+    for attempt in range(2):
+        try:
+            resp = requests.get(image_url, timeout=30)
+            resp.raise_for_status()
+            img = Image.open(io.BytesIO(resp.content)).convert("RGB")
+            break
+        except Exception as e:
+            if attempt == 1:
+                logger.warning("image_embedding_from_url failed: %s", e)
+                return None
     try:
         inputs = processor(images=img, return_tensors="pt", padding="max_length")
         inputs = {k: v.to(device) for k, v in inputs.items()}
@@ -48,7 +55,8 @@ def image_embedding_from_url(image_url: str, processor, model, device) -> list[f
         if len(vec) != EMBEDDING_DIM:
             return None
         return vec
-    except Exception:
+    except Exception as e:
+        logger.warning("image_embedding inference failed: %s", e)
         return None
 
 
@@ -73,7 +81,8 @@ def text_embedding(text: str, tokenizer, model, device) -> list[float] | None:
         if len(vec) != EMBEDDING_DIM:
             return None
         return vec
-    except Exception:
+    except Exception as e:
+        logger.warning("text_embedding failed: %s", e)
         return None
 
 

@@ -1,7 +1,10 @@
 """
 Full pipeline: scrape Fear of God products, compute SigLIP embeddings, upsert to Supabase.
 """
+import logging
 import sys
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 from scraper import scrape_all_products
 from embeddings import (
     load_siglip,
@@ -31,6 +34,8 @@ def run(dry_run: bool = False, limit: int | None = None):
     print(f"Processing {len(products)} products with images...")
 
     rows = []
+    fail_img = 0
+    fail_txt = 0
     for i, row in enumerate(products):
         if (i + 1) % 10 == 0 or i == 0:
             print(f"Processing {i+1}/{len(products)}: {row.get('title', '')[:50]}...")
@@ -38,14 +43,23 @@ def run(dry_run: bool = False, limit: int | None = None):
         if image_url:
             emb = image_embedding_from_url(image_url, processor, model, device)
             row["image_embedding"] = emb
+            if emb is None:
+                fail_img += 1
         else:
             row["image_embedding"] = None
+            fail_img += 1
         info_text = build_info_text(row)
         if info_text:
-            row["info_embedding"] = text_embedding(info_text, tokenizer, model, device)
+            txt_emb = text_embedding(info_text, tokenizer, model, device)
+            row["info_embedding"] = txt_emb
+            if txt_emb is None:
+                fail_txt += 1
         else:
             row["info_embedding"] = None
+            fail_txt += 1
         rows.append(row)
+    if fail_img or fail_txt:
+        print(f"Note: image_embedding failed {fail_img} times, info_embedding failed {fail_txt} times.")
 
     print("Upserting to Supabase...")
     success, errors = upsert_products(rows)
