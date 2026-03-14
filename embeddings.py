@@ -34,6 +34,7 @@ def image_embedding_from_url(image_url: str, processor, model, device) -> list[f
     """Download image and return 768-dim embedding from SigLIP vision encoder."""
     if not image_url or not image_url.startswith("http"):
         return None
+    img = None
     for attempt in range(2):
         try:
             resp = requests.get(image_url, timeout=30)
@@ -51,10 +52,11 @@ def image_embedding_from_url(image_url: str, processor, model, device) -> list[f
             out = model.get_image_features(**inputs)
         if out is None:
             return None
-        vec = out[0].float().cpu().numpy().tolist()
-        if len(vec) != EMBEDDING_DIM:
+        vec = out.float().cpu().numpy()
+        if vec.shape[-1] != EMBEDDING_DIM:
+            logger.warning("image_embedding shape mismatch: %s", vec.shape)
             return None
-        return vec
+        return vec[0].tolist()
     except Exception as e:
         logger.warning("image_embedding inference failed: %s", e)
         return None
@@ -77,10 +79,11 @@ def text_embedding(text: str, tokenizer, model, device) -> list[float] | None:
             out = model.get_text_features(**inputs)
         if out is None:
             return None
-        vec = out[0].float().cpu().numpy().tolist()
-        if len(vec) != EMBEDDING_DIM:
+        vec = out.float().cpu().numpy()
+        if vec.shape[-1] != EMBEDDING_DIM:
+            logger.warning("text_embedding shape mismatch: %s", vec.shape)
             return None
-        return vec
+        return vec[0].tolist()
     except Exception as e:
         logger.warning("text_embedding failed: %s", e)
         return None
