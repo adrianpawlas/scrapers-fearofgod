@@ -50,9 +50,9 @@ def image_embedding_from_url(image_url: str, processor, model, device) -> list[f
         inputs = {k: v.to(device) for k, v in inputs.items()}
         with torch.no_grad():
             out = model.get_image_features(**inputs)
-        if out is None:
+        if out is None or out.pooler_output is None:
             return None
-        vec = out.float().cpu().numpy()
+        vec = out.pooler_output.float().cpu().numpy()
         if vec.shape[-1] != EMBEDDING_DIM:
             logger.warning("image_embedding shape mismatch: %s", vec.shape)
             return None
@@ -77,9 +77,9 @@ def text_embedding(text: str, tokenizer, model, device) -> list[float] | None:
         inputs = {k: v.to(device) for k, v in inputs.items()}
         with torch.no_grad():
             out = model.get_text_features(**inputs)
-        if out is None:
+        if out is None or out.pooler_output is None:
             return None
-        vec = out.float().cpu().numpy()
+        vec = out.pooler_output.float().cpu().numpy()
         if vec.shape[-1] != EMBEDDING_DIM:
             logger.warning("text_embedding shape mismatch: %s", vec.shape)
             return None
