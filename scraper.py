@@ -113,6 +113,39 @@ def _gender_from_tags(tags: list[str] | str, collection_handle: str) -> str:
     return "man"
 
 
+import re
+
+
+def _is_product_image(filename: str) -> bool:
+    """
+    Heuristic to determine if an image is a plain product shot vs lifestyle/editorial.
+    Returns True if likely a product image, False if likely lifestyle.
+    """
+    if not filename:
+        return True
+    name = filename.lower()
+    if name.startswith("ed") and "_m" in name:
+        return False
+    if re.match(r"^a\d+_", name):
+        return False
+    if re.search(r"_m\d+_", name):
+        return False
+    return True
+
+
+def _select_product_image(images: list[dict]) -> str:
+    """Select the best product image URL from a list, preferring plain product shots."""
+    if not images:
+        return ""
+    urls = [(img.get("src") or "").strip() for img in images if img.get("src")]
+    if not urls:
+        return ""
+    product_imgs = [u for u in urls if _is_product_image(u.split("/")[-1])]
+    if product_imgs:
+        return product_imgs[0]
+    return urls[0]
+
+
 def build_product_row(
     product: dict,
     collection_handle: str,
@@ -139,10 +172,10 @@ def build_product_row(
     image_url = ""
     additional_urls = []
     if images:
-        image_url = (images[0].get("src") or "").strip()
-        for img in images[1:]:
+        image_url = _select_product_image(images)
+        for img in images:
             src = (img.get("src") or "").strip()
-            if src:
+            if src and src != image_url:
                 additional_urls.append(src)
     if not image_url and product.get("image"):
         image_url = (product["image"].get("src") or "").strip()
